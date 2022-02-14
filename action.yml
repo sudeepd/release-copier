@@ -13,9 +13,6 @@ inputs:
   project-image:
     description: Docker image of the project
     required: true
-  project-image-tag:
-    description: Tag to the docker image
-    required: true
   dst-repo:  
     description: Path to the destination repo  where the artifacts will be copied over
     required: true
@@ -67,7 +64,6 @@ runs:
           TARGET_DIR: ${{inputs.dst-path}}/${{inputs.project-name}}
           TARGET_VERSION: ${{inputs.project-version}}
           TARGET_IMAGE: ${{inputs.project-image}}
-          TARGET_IMAGE_TAG: ${{inputs.project-image-tag}}
           
       - 
         name: Commit artifacts to devops repo
