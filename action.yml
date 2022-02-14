@@ -1,0 +1,81 @@
+name: 'copy release artifacts'
+description: 'Copy micro service artifacts to devops repo for deployment'
+inputs:
+  project-name:
+    description: Name of the source project
+    required: true
+  project-dir:
+    description: Path to projects artifacts directory that should be copied over
+    required: true  
+  project-version:
+    description: Version of the project being created
+    required: true
+  project-image:
+    description: Docker image of the project
+    required: true
+  project-image-tag:
+    description: Tag to the docker image
+    required: true
+  dst-repo:  
+    description: Path to the destination repo  where the artifacts will be copied over
+    required: true
+  dst-ref:
+    description: branch of the repo path where the artifacts will be copied
+    required: true
+  dst-token:
+    description: Access token for repository access
+    required: true
+  dst-path:  
+    description: The subdirectory in the repo where the releases will be copied over
+    required: false
+    default: 'releases'
+  user-name:
+    description: Username used for push and commit
+    required: false
+    default : 'github bot'
+  user-email: 
+    description: User email used for push and commit
+    required: false
+    default : 'githubbot@github.com'
+
+runs:
+  using: "composite"
+  steps:
+      - 
+        name: Checkout devops repo
+        uses: actions/checkout@v2
+        with:
+          path: ${{ github.workspace }}/${{github.sha}}
+          repository: ${{inputs.dst-repo}}
+          ref: ${{inputs.dst-ref}}
+          token: ${{inputs.dst-token}}
+
+      - 
+        name: Copy release artificats to devops
+        working-directory: ${{ github.workspace }}/${{github.sha}}
+        shell: bash
+        run: |
+          rm -rf ${{inputs.dst-path}}/${{inputs.project-name}}
+          mkdir -p ${{inputs.dst-path}}/${{inputs.project-name}}          
+          mv ${{ inputs.project-dir }}/* ${{inputs.dst-path}}/${{inputs.project-name}}          
+      - 
+        name: Create bill of materials file
+        working-directory: ${{ github.workspace }}/${{github.sha}}
+        run: ${{ github.action_path }}/createbom.sh
+        shell: bash 
+        env: 
+          TARGET_DIR: ${{inputs.dst-path}}/${{inputs.project-name}}
+          TARGET_VERSION: ${{inputs.project-version}}
+          TARGET_IMAGE: ${{inputs.project-image}}
+          TARGET_IMAGE_TAG: ${{inputs.project-image-tag}}
+          
+      - 
+        name: Commit artifacts to devops repo
+        working-directory: ${{ github.workspace }}/${{github.sha}}
+        run: |
+          git config user.name ${{inputs.user-name}}
+          git config user.email ${{inputs.user-email}}
+          git add ${{inputs.dst-path}}/${{inputs.project-name}}         
+          git commit -m "Commit by github action ${{github.run_number}}"
+          git push https://${{inputs.dst-token}}@github.com/${{inputs.dst-repo}}
+        shell: bash 
